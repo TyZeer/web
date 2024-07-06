@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP3 Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #fileList {
+            margin-top: 20px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .file-item button {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>MP3 Management</h1>
+
+<h2>Upload MP3 File</h2>
+<form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" id="fileInput" name="file" accept=".mp3" required>
+    <button type="submit">Upload</button>
+</form>
+<div id="uploadStatus"></div>
+
+<h2>All MP3 Files</h2>
+<button id="refreshList">Refresh List</button>
+<div id="fileList"></div>
+
+<h2>Download MP3 Files</h2>
+<label for="fileCount">Number of files to download:</label>
+<input type="number" id="fileCount" min="1">
+<button id="downloadShuffled">Download Shuffled Files</button>
+<button id="downloadAll">Download All Files</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script>
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const refreshList = document.getElementById('refreshList');
+    const fileList = document.getElementById('fileList');
+    const fileCount = document.getElementById('fileCount');
+    const downloadShuffled = document.getElementById('downloadShuffled');
+    const downloadAll = document.getElementById('downloadAll');
+
+    // WebSocket connection
+    let stompClient = null;
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            console.log('Connected: ' + frame);
+            stompClient.subscribe('/topic/filesUpdated', function(message) {
+                if (message.body) {
+                    loadFileList();
+                }
+            });
+        });
+    }
+
+    connect();
+
+    // Upload file
+    uploadForm.onsubmit = async function(event) {
+        event.preventDefault();
+        const formData = new FormData(uploadForm);
+
+        try {
+            const response = await fetch('/mp3/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.text();
+            uploadStatus.textContent = result;
+            loadFileList();
+        } catch (error) {
+            uploadStatus.textContent = 'File upload failed!';
+        }
+    };
+
+    // Load file list
+    async function loadFileList() {
+        try {
+            const response = await fetch('/mp3/list');
+            const files = await response.json();
+            fileList.innerHTML = '';
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.textContent = file.fileName;
+
+                const downloadButton = document.createElement('button');
+                downloadButton.textContent = 'Download';
+                downloadButton.onclick = () => downloadFile(file.id);
+                fileItem.appendChild(downloadButton);
+
+                fileList.appendChild(fileItem);
+            });
+        } catch (error) {
+            fileList.textContent = 'Failed to load file list!';
+        }
+    }
+
+    // Download file
+    function downloadFile(id) {
+        window.location.href = `/mp3/download/${id}`;
+    }
+
+    // Download shuffled files
+    downloadShuffled.onclick = async function() {
+        const count = fileCount.value;
+        try {
+            const response = await fetch(`/mp3/download/shuffled?count=${count}`);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'shuffled_files.zip';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert('Failed to download shuffled files!');
+        }
+    };
+
+    // Download all files
+    downloadAll.onclick = async function() {
+        try {
+            const response = await fetch('/mp3/download/all');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'all_files.zip';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert('Failed to download all files!');
+        }
+    };
+
+    // Refresh file list
+    refreshList.onclick = loadFileList;
+
+    // Initial load of file list
+    loadFileList();
+</script>
+</body>
+</html>
