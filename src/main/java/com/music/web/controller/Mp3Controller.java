@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 import java.io.IOException;
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("/mp3")
 public class Mp3Controller {
 
@@ -28,10 +28,10 @@ public class Mp3Controller {
         this.mp3Service = mp3Service;
     }
 
-    @GetMapping
-    public String index() {
-        return "index"; // Возвращает index.html из папки static
-    }
+//    @GetMapping
+//    public String index() {
+//        return "index"; // Возвращает index.html из папки static
+//    }
 
     @PostMapping("/upload")
     public Mono<ResponseEntity<String>> uploadMp3(@RequestParam("file") MultipartFile file) throws IOException {
