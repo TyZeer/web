@@ -1,15 +1,22 @@
 package com.music.web.models;
 
-import lombok.Data;
-import lombok.Getter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Table;
+import lombok.*;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
 
 @Data
-@Table("mp3_files")
+@Entity
+@NoArgsConstructor
 @Getter
 public class Mp3File {
+    @Getter
+    @Setter
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String fileName;
     private String fileType;
@@ -20,4 +27,5 @@ public class Mp3File {
         this.fileType =".mp3";
         this.data = fileData;
     }
+
 }

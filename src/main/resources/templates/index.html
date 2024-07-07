@@ -42,8 +42,6 @@
 <button id="downloadShuffled">Download Shuffled Files</button>
 <button id="downloadAll">Download All Files</button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 <script>
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -54,31 +52,13 @@
     const downloadShuffled = document.getElementById('downloadShuffled');
     const downloadAll = document.getElementById('downloadAll');
 
-    // WebSocket connection
-    let stompClient = null;
-
-    function connect() {
-        const socket = new SockJS('/ws');
-        stompClient = Stomp.over(socket);
-        stompClient.connect({}, function(frame) {
-            console.log('Connected: ' + frame);
-            stompClient.subscribe('/topic/filesUpdated', function(message) {
-                if (message.body) {
-                    loadFileList();
-                }
-            });
-        });
-    }
-
-    connect();
-
     // Upload file
     uploadForm.onsubmit = async function(event) {
         event.preventDefault();
         const formData = new FormData(uploadForm);
 
         try {
-            const response = await fetch('/mp3/upload', {
+            const response = await fetch('/inner/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -93,7 +73,7 @@
     // Load file list
     async function loadFileList() {
         try {
-            const response = await fetch('/mp3/list');
+            const response = await fetch('/inner/list');
             const files = await response.json();
             fileList.innerHTML = '';
             files.forEach(file => {
@@ -115,14 +95,14 @@
 
     // Download file
     function downloadFile(id) {
-        window.location.href = `/mp3/download/${id}`;
+        window.location.href = `/inner/download/${id}`;
     }
 
     // Download shuffled files
     downloadShuffled.onclick = async function() {
         const count = fileCount.value;
         try {
-            const response = await fetch(`/mp3/download/shuffled?count=${count}`);
+            const response = await fetch(`/inner/download/shuffled?count=${count}`);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -140,7 +120,7 @@
     // Download all files
     downloadAll.onclick = async function() {
         try {
-            const response = await fetch('/mp3/download/all');
+            const response = await fetch('/inner/download/all');
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
