@@ -21,5 +21,4 @@ FROM openjdk:17-jdk-alpine
 WORKDIR /app
 COPY --from=builder /app/target/mp3-manager-1.0.0-SNAPSHOT.jar /app
 EXPOSE 8083
-EXPOSE 5432
 CMD ["java", "-jar", "mp3-manager-1.0.0-SNAPSHOT.jar"]
