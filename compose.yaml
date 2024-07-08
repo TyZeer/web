@@ -13,6 +13,6 @@ services:
   spring-app:
     image: 'shuffler_web'
     ports:
-      - '8081:8081'
+      - '8083:8083'
     depends_on:
       - postgres
