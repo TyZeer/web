@@ -10,15 +10,20 @@ COPY mvnw .
 COPY mvnw.cmd .
 RUN chmod +x mvnw
 
-# Copy the Maven project file and source code
+# Copy the Maven project file
 COPY pom.xml .
+
+# Copy the source code
 COPY src ./src
 
 # Package the application
 RUN ./mvnw package -DskipTests
 
+# Check the contents of the target directory
+RUN ls -l target
+
 # Expose the port the application runs on
-EXPOSE 8080
+EXPOSE 8083
 
 # Run the Spring Boot application
 CMD ["java", "-jar", "target/mp3-manager-0.0.1-SNAPSHOT.jar"]
