@@ -7,6 +7,8 @@ services:
       - 'POSTGRES_DB=shuffle_db'
       - 'POSTGRES_PASSWORD=1234'
       - 'POSTGRES_USER=postgres'
+      - 'SPRING_JPA_DATABASE: postgresql'
+      - 'SPRING_JPA_HIBERNATE_DDL-AUTO: update'
     ports:
       - '5432:5432'
 
