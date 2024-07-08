@@ -4,13 +4,16 @@ FROM openjdk:17-jdk-alpine
 # Set the working directory in the container
 WORKDIR /app
 
+# Copy the Maven Wrapper files
+COPY .mvn/ .mvn/
+COPY mvnw .
+COPY mvnw.cmd .
+
 # Copy the Maven project file
 COPY pom.xml .
 
 # Copy the source code
 COPY src ./src
-
-RUN chmod +x mvnw
 
 # Package the application
 RUN ./mvnw package -DskipTests
