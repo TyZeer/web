@@ -32,6 +32,13 @@
 </form>
 <div id="uploadStatus"></div>
 
+<h2>Upload MP3 Zip File</h2>
+<form id="uploadZipForm" enctype="multipart/form-data">
+    <input type="file" id="zipFileInput" name="file" accept=".zip" required>
+    <button type="submit">Upload Zip</button>
+</form>
+<div id="uploadZipStatus"></div>
+
 <h2>All MP3 Files</h2>
 <button id="refreshList">Refresh List</button>
 <div id="fileList"></div>
@@ -46,13 +53,16 @@
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const uploadStatus = document.getElementById('uploadStatus');
+    const uploadZipForm = document.getElementById('uploadZipForm');
+    const zipFileInput = document.getElementById('zipFileInput');
+    const uploadZipStatus = document.getElementById('uploadZipStatus');
     const refreshList = document.getElementById('refreshList');
     const fileList = document.getElementById('fileList');
     const fileCount = document.getElementById('fileCount');
     const downloadShuffled = document.getElementById('downloadShuffled');
     const downloadAll = document.getElementById('downloadAll');
 
-    // Upload file
+    // Upload single MP3 file
     uploadForm.onsubmit = async function(event) {
         event.preventDefault();
         const formData = new FormData(uploadForm);
@@ -67,6 +77,24 @@
             loadFileList();
         } catch (error) {
             uploadStatus.textContent = 'File upload failed!';
+        }
+    };
+
+    // Upload zip file containing MP3 files
+    uploadZipForm.onsubmit = async function(event) {
+        event.preventDefault();
+        const formData = new FormData(uploadZipForm);
+
+        try {
+            const response = await fetch('/inner/uploadZip', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.text();
+            uploadZipStatus.textContent = result;
+            loadFileList();
+        } catch (error) {
+            uploadZipStatus.textContent = 'Zip file upload failed!';
         }
     };
 
