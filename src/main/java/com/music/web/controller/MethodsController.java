@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -138,6 +139,17 @@ public class MethodsController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deleteMp3(@PathVariable Long id) {
+        try {
+            mp3Service.deleteMp3ById(id);
+            return ResponseEntity.ok().build();
+        }catch (Exception e){
+            return ResponseEntity.internalServerError().body("Error deleting mp3 file.");
+        }
+
     }
 }
 
