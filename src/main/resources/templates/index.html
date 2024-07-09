@@ -69,7 +69,7 @@
         formData.append('files', fileInput.files[0]); // Ensure 'files' matches your HTML input name
 
         try {
-            const response = await fetch('/api/files/upload', {
+            const response = await fetch('/inner/upload', {
                 method: 'POST',
                 body: formData
             });
