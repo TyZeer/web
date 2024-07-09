@@ -66,7 +66,7 @@
     uploadForm.onsubmit = async function(event) {
         event.preventDefault();
         const formData = new FormData();
-        formData.append('files', fileInput.files[0]); // Ensure 'files' matches your HTML input name
+        formData.append('file', fileInput.files[0]); // Ensure 'files' matches your HTML input name
 
         try {
             const response = await fetch('/inner/upload', {
