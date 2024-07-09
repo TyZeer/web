@@ -114,11 +114,6 @@
                 downloadButton.onclick = () => downloadFile(file.id);
                 fileItem.appendChild(downloadButton);
 
-                const deleteButton = document.createElement('button');
-                deleteButton.textContent = 'Delete';
-                deleteButton.onclick = () => deleteFile(file.id);
-                fileItem.appendChild(deleteButton);
-
                 fileList.appendChild(fileItem);
             });
         } catch (error) {
@@ -129,24 +124,6 @@
     // Download file
     function downloadFile(id) {
         window.location.href = `/inner/download/${id}`;
-    }
-
-    // Delete file
-    async function deleteFile(id) {
-        if (confirm('Are you sure you want to delete this file?')) {
-            try {
-                const response = await fetch(`/delete/${id}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    loadFileList();
-                } else {
-                    alert('Failed to delete file!');
-                }
-            } catch (error) {
-                alert('Failed to delete file!');
-            }
-        }
     }
 
     // Download shuffled files
