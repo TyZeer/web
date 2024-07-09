@@ -19,12 +19,10 @@ public class Mp3File {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String fileName;
-    private String fileType;
     private byte[] data;
 
     public Mp3File(String filename, byte[] fileData) {
-        this.fileName = filename;
-        this.fileType =".mp3";
+        this.fileName = filename;;
         this.data = fileData;
     }
 

@@ -27,17 +27,17 @@
 
 <h2>Upload MP3 File</h2>
 <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" id="fileInput" name="file" accept=".mp3" required>
+    <input type="file" id="fileInput" name="files" accept=".mp3" required>
     <button type="submit">Upload</button>
 </form>
 <div id="uploadStatus"></div>
 
-<h2>Upload MP3 Zip File</h2>
-<form id="uploadZipForm" enctype="multipart/form-data">
-    <input type="file" id="zipFileInput" name="file" accept=".zip" required>
-    <button type="submit">Upload Zip</button>
+<h2>Upload Multiple MP3 Files</h2>
+<form id="uploadMultipleForm" enctype="multipart/form-data">
+    <input type="file" id="multipleFileInput" name="files" accept=".mp3" multiple required>
+    <button type="submit">Upload Multiple Files</button>
 </form>
-<div id="uploadZipStatus"></div>
+<div id="uploadMultipleStatus"></div>
 
 <h2>All MP3 Files</h2>
 <button id="refreshList">Refresh List</button>
@@ -53,9 +53,9 @@
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const uploadStatus = document.getElementById('uploadStatus');
-    const uploadZipForm = document.getElementById('uploadZipForm');
-    const zipFileInput = document.getElementById('zipFileInput');
-    const uploadZipStatus = document.getElementById('uploadZipStatus');
+    const uploadMultipleForm = document.getElementById('uploadMultipleForm');
+    const multipleFileInput = document.getElementById('multipleFileInput');
+    const uploadMultipleStatus = document.getElementById('uploadMultipleStatus');
     const refreshList = document.getElementById('refreshList');
     const fileList = document.getElementById('fileList');
     const fileCount = document.getElementById('fileCount');
@@ -65,10 +65,11 @@
     // Upload single MP3 file
     uploadForm.onsubmit = async function(event) {
         event.preventDefault();
-        const formData = new FormData(uploadForm);
+        const formData = new FormData();
+        formData.append('files', fileInput.files[0]); // Ensure 'files' matches your HTML input name
 
         try {
-            const response = await fetch('/inner/upload', {
+            const response = await fetch('/api/files/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -80,21 +81,24 @@
         }
     };
 
-    // Upload zip file containing MP3 files
-    uploadZipForm.onsubmit = async function(event) {
+    // Upload multiple MP3 files
+    uploadMultipleForm.onsubmit = async function(event) {
         event.preventDefault();
-        const formData = new FormData(uploadZipForm);
+        const formData = new FormData();
+        for (const file of multipleFileInput.files) {
+            formData.append('files', file);
+        }
 
         try {
-            const response = await fetch('/inner/uploadZip', {
+            const response = await fetch('/inner/uploadMultiple', {
                 method: 'POST',
                 body: formData
             });
             const result = await response.text();
-            uploadZipStatus.textContent = result;
+            uploadMultipleStatus.textContent = result;
             loadFileList();
         } catch (error) {
-            uploadZipStatus.textContent = 'Zip file upload failed!';
+            uploadMultipleStatus.textContent = 'Multiple file upload failed!';
         }
     };
 
