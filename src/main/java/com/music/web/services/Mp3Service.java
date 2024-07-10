@@ -3,91 +3,78 @@ package com.music.web.services;
 import com.music.web.dto.Mp3FileDto;
 import com.music.web.models.Mp3File;
 import com.music.web.repos.Mp3FileRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.stream.Stream;
 
 @Service
 public class Mp3Service {
 
-    private final Mp3FileRepository mp3FileRepository;
-
-    public Mp3Service(Mp3FileRepository mp3FileRepository) {
-        this.mp3FileRepository = mp3FileRepository;
-    }
-
-    public Mp3File saveMp3(String filename, byte[] fileData) {
-        Mp3File mp3File = new Mp3File(filename, fileData);
-        return mp3FileRepository.save(mp3File);
-    }
-
-    public List<Mp3File> getAllMp3Files() {
-        return  mp3FileRepository.findAll();
-    }
-    public List<Mp3FileDto> getAllMp3FDto() {
-        return mp3FileRepository.findAllMp3Files();
-    }
-
-    public Optional<Mp3File> getMp3FileById(Long id) {
-        return mp3FileRepository.findById(id);
-    }
-
-    public List<Mp3File> getShuffledMp3Files(int count) {
-            List<Mp3File> allFiles = mp3FileRepository.findAll();
-        Collections.shuffle(allFiles);
-        return allFiles.stream().limit(count).collect(Collectors.toList());
-    }
-    @Transactional
-    public void saveAllMp3Files(List<Mp3File> mp3Files) {
-        mp3FileRepository.saveAll(mp3Files);
-    }
-
-    public void deleteMp3ById(Long id) {
-        mp3FileRepository.deleteById(id);
-    }
-
-    @Transactional
-    public void processZipFile(InputStream zipInputStream) throws IOException {
-        List<Mp3File> mp3Files = new ArrayList<>();
-        try (ZipInputStream zis = new ZipInputStream(zipInputStream)) {
-            ZipEntry zipEntry;
-            while ((zipEntry = zis.getNextEntry()) != null) {
-                String fileName = zipEntry.getName();
-                try {
-                    // Try reading the file name in UTF-8 encoding
-                    fileName = new String(fileName.getBytes("ISO-8859-1"), "UTF-8");
-                } catch (Exception e) {
-                    System.out.println("Error converting file name: " + fileName);
-                    e.printStackTrace();
-                }
-                System.out.println("Processing file: " + fileName);
-
-                if (!zipEntry.isDirectory() && fileName.endsWith(".mp3")) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[1024];
-                    int len;
-                    while ((len = zis.read(buffer)) > 0) {
-                        baos.write(buffer, 0, len);
-                    }
-                    Mp3File mp3File = new Mp3File();
-                    mp3File.setFileName(fileName);
-                    mp3File.setData(baos.toByteArray());
-                    mp3Files.add(mp3File);
-                }
-            }
+//    @Value("${mp3.storage.directory}")
+    private String storageDirectory;
+    public Mp3Service() throws IOException {
+        this.storageDirectory = "./mp3-storage";
+        Path path = Paths.get("./mp3-storage");
+        if (Files.notExists(path)) {
+            Files.createDirectories(path);
         }
-        mp3FileRepository.saveAll(mp3Files);
+    }
+
+    public void saveMp3(String filename, byte[] fileData) throws IOException {
+        Path filePath = Paths.get(storageDirectory, filename);
+        Files.write(filePath, fileData);
+    }
+
+    public List<Mp3FileDto> getAllMp3FDto() throws IOException {
+        try (Stream<Path> paths = Files.list(Paths.get(storageDirectory))) {
+            return paths.filter(Files::isRegularFile)
+                    .map(path -> new Mp3FileDto(null, path.getFileName().toString()))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    public Path getFilePath(String fileName) {
+        return Paths.get(storageDirectory, fileName);
+    }
+
+    public List<String> getShuffledFiles() throws IOException {
+        List<String> fileNames = getAllFileNames();
+        Collections.shuffle(fileNames);
+        return fileNames;
+    }
+
+    public List<String> getAllFileNames() throws IOException {
+        try (Stream<Path> paths = Files.list(Paths.get(storageDirectory))) {
+            return paths.filter(Files::isRegularFile)
+                    .map(path -> path.getFileName().toString())
+                    .collect(Collectors.toList());
+        }
+    }
+
+    public void deleteMp3() throws IOException {
+        Path directory = Paths.get(storageDirectory);
+        if (!Files.exists(directory) || !Files.isDirectory(directory)) {
+            throw new IllegalArgumentException("Invalid directory: " + storageDirectory);
+        }
+
+        Files.list(directory)
+                .filter(file -> file.toString().endsWith(".mp3"))
+                .forEach(file -> {
+                    try {
+                        Files.delete(file);
+                    } catch (IOException e) {
+                        System.err.println("Failed to delete file: " + file);
+                        e.printStackTrace();
+                    }
+                });
     }
 }
 //@Autowired private final Mp3FileRepository mp3FileRepository;

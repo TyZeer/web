@@ -27,7 +27,7 @@
 
 <h2>Upload MP3 File</h2>
 <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" id="fileInput" name="files" accept=".mp3" required>
+    <input type="file" id="fileInput" name="file" accept=".mp3" required>
     <button type="submit">Upload</button>
 </form>
 <div id="uploadStatus"></div>
@@ -41,11 +41,10 @@
 
 <h2>All MP3 Files</h2>
 <button id="refreshList">Refresh List</button>
+<button id="deleteAll">Delete All MP3 Files</button>
 <div id="fileList"></div>
 
 <h2>Download MP3 Files</h2>
-<label for="fileCount">Number of files to download:</label>
-<input type="number" id="fileCount" min="1">
 <button id="downloadShuffled">Download Shuffled Files</button>
 <button id="downloadAll">Download All Files</button>
 
@@ -58,15 +57,15 @@
     const uploadMultipleStatus = document.getElementById('uploadMultipleStatus');
     const refreshList = document.getElementById('refreshList');
     const fileList = document.getElementById('fileList');
-    const fileCount = document.getElementById('fileCount');
     const downloadShuffled = document.getElementById('downloadShuffled');
     const downloadAll = document.getElementById('downloadAll');
+    const deleteAll = document.getElementById('deleteAll');
 
     // Upload single MP3 file
     uploadForm.onsubmit = async function(event) {
         event.preventDefault();
         const formData = new FormData();
-        formData.append('file', fileInput.files[0]); // Ensure 'files' matches your HTML input name
+        formData.append('file', fileInput.files[0]);
 
         try {
             const response = await fetch('/inner/upload', {
@@ -115,7 +114,7 @@
 
                 const downloadButton = document.createElement('button');
                 downloadButton.textContent = 'Download';
-                downloadButton.onclick = () => downloadFile(file.id);
+                downloadButton.onclick = () => downloadFile(file.fileName);
                 fileItem.appendChild(downloadButton);
 
                 fileList.appendChild(fileItem);
@@ -126,24 +125,18 @@
     }
 
     // Download file
-    function downloadFile(id) {
-        window.location.href = `/inner/download/${id}`;
+    function downloadFile(fileName) {
+        window.location.href = `/inner/download/${fileName}`;
     }
 
     // Download shuffled files
     downloadShuffled.onclick = async function() {
-        const count = fileCount.value;
         try {
-            const response = await fetch(`/inner/download/shuffled?count=${count}`);
+            const response = await fetch(`/inner/download/shuffled`, {
+                method: 'GET'
+            });
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'shuffled_files.zip';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
+            downloadBlob(blob, 'shuffled_files.zip');
         } catch (error) {
             alert('Failed to download shuffled files!');
         }
@@ -152,18 +145,30 @@
     // Download all files
     downloadAll.onclick = async function() {
         try {
-            const response = await fetch('/inner/download/all');
+            const response = await fetch('/inner/download/all', {
+                method: 'GET'
+            });
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'all_files.zip';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
+            downloadBlob(blob, 'all_files.zip');
         } catch (error) {
             alert('Failed to download all files!');
+        }
+    };
+
+    // Delete all files
+    deleteAll.onclick = async function() {
+        try {
+            const response = await fetch('/inner/delete', {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                alert('All MP3 files deleted successfully!');
+                loadFileList();
+            } else {
+                alert('Failed to delete MP3 files!');
+            }
+        } catch (error) {
+            alert('Failed to delete MP3 files!');
         }
     };
 
@@ -172,6 +177,17 @@
 
     // Initial load of file list
     loadFileList();
+
+    function downloadBlob(blob, fileName) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
 </script>
 </body>
 </html>

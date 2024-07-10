@@ -6,6 +6,7 @@ import com.music.web.services.Mp3Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -28,42 +32,31 @@ import java.util.zip.ZipOutputStream;
 @RequestMapping("/inner")
 public class MethodsController {
 
-    @Autowired Mp3Service mp3Service;
     @Autowired
-    public MethodsController(Mp3Service mp3Service) {
-    }
+    Mp3Service mp3Service;
+
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
-        String message = "";
         try {
-            var mp3 = mp3Service.saveMp3(file.getOriginalFilename(), file.getBytes());
-
-            message = "Uploaded the file successfully: ";
-            return ResponseEntity.status(HttpStatus.OK).body(message);
+            mp3Service.saveMp3(file.getOriginalFilename(), file.getBytes());
+            return ResponseEntity.status(HttpStatus.OK).body("Uploaded the file successfully");
         } catch (Exception e) {
-            message = "Could not upload the file: " + file.getOriginalFilename() + ". Error: " + e.getMessage();
-            return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(message);
+            return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body("Could not upload the file. Error: " + e.getMessage());
         }
     }
+
     @PostMapping("/uploadMultiple")
     public ResponseEntity<String> uploadFiles(@RequestParam("files") List<MultipartFile> files) {
-        List<Mp3File> savedFiles = new ArrayList<>();
-
         for (MultipartFile file : files) {
-            String filename = file.getOriginalFilename();
             try {
-                // Create the Mp3File object with content and save to database
-                Mp3File mp3File = new Mp3File(filename, file.getBytes());
-                savedFiles.add(mp3Service.saveMp3(mp3File.getFileName(), mp3File.getData()));
-                mp3Service.saveAllMp3Files(savedFiles);
+                mp3Service.saveMp3(file.getOriginalFilename(), file.getBytes());
             } catch (IOException e) {
-                e.printStackTrace();
                 return ResponseEntity.status(500).build();
             }
         }
-
         return ResponseEntity.ok().body("Files uploaded successfully.");
     }
+
     @GetMapping("/list")
     @ResponseBody
     public List<Mp3FileDto> listMp3Files() {
@@ -75,59 +68,58 @@ public class MethodsController {
         }
     }
 
-    @GetMapping("/download/{id}")
-    public ResponseEntity<ByteArrayResource> downloadMp3(@PathVariable Long id) {
-        return mp3Service.getMp3FileById(id)
-                .map(mp3File -> ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + mp3File.getFileName() + "\"")
-                        .body(new ByteArrayResource(mp3File.getData())))
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-
-    @GetMapping("/download/shuffled")
-    public ResponseEntity<InputStreamResource> downloadShuffled(@RequestParam int count) {
-        List<Mp3File> mp3Files = mp3Service.getAllMp3Files();
-        Collections.shuffle(mp3Files);
-        if (count < mp3Files.size()) {
-            mp3Files = mp3Files.subList(0, count);
-        }
-
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             ZipOutputStream zos = new ZipOutputStream(baos)) {
-
-            for (int i = 0; i < mp3Files.size(); i++) {
-                Mp3File mp3File = mp3Files.get(i);
-                String filename = "sf_" + i + "_" + mp3File.getFileName(); // Adjust filename here
-                ZipEntry entry = new ZipEntry(filename);
-                zos.putNextEntry(entry);
-                zos.write(mp3File.getData());
-                zos.closeEntry();
-            }
-            zos.finish();
-
-            ByteArrayResource resource = new ByteArrayResource(baos.toByteArray());
+    @GetMapping("/download/{fileName}")
+    public ResponseEntity<Resource> downloadMp3(@PathVariable String fileName) {
+        try {
+            Path filePath = mp3Service.getFilePath(fileName);
+            Resource resource = new InputStreamResource(Files.newInputStream(filePath));
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"shuffled_files.zip\"")
-                    .body(new InputStreamResource(resource.getInputStream()));
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(resource);
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @GetMapping("/download/all")
-    public ResponseEntity<InputStreamResource> downloadAll() {
-        List<Mp3File> mp3Files = mp3Service.getAllMp3Files();
+    @GetMapping("/download/shuffled")
+    public void downloadShuffled(HttpServletResponse response) {
+        response.setContentType("application/zip");
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"shuffled_files.zip\"");
 
+        try (ZipOutputStream zos = new ZipOutputStream(response.getOutputStream())) {
+            List<String> shuffledFiles = mp3Service.getShuffledFiles();
+            for (String fileName : shuffledFiles) {
+                Path filePath = mp3Service.getFilePath(fileName);
+
+                // Add a random number to the beginning of the file name
+                String randomFileName = addRandomNumberToFileName(fileName);
+                zos.putNextEntry(new ZipEntry(randomFileName));
+                Files.copy(filePath, zos);
+                zos.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create ZIP file", e);
+        }
+    }
+
+    private String addRandomNumberToFileName(String fileName) {
+        int randomNumber = (int) (Math.random() * 10000); // Generates a random number between 0 and 9999
+        return randomNumber + "_" + fileName;
+    }
+
+
+
+    @GetMapping("/download/all")
+    public ResponseEntity<Resource> downloadAll() {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
-            for (Mp3File mp3File : mp3Files) {
-                ZipEntry entry = new ZipEntry(mp3File.getFileName());
-                zos.putNextEntry(entry);
-                zos.write(mp3File.getData());
+            List<String> allFiles = mp3Service.getAllFileNames();
+            for (String fileName : allFiles) {
+                Path filePath = mp3Service.getFilePath(fileName);
+                zos.putNextEntry(new ZipEntry(fileName));
+                Files.copy(filePath, zos);
                 zos.closeEntry();
             }
             zos.finish();
@@ -136,21 +128,19 @@ public class MethodsController {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"all_files.zip\"")
-                    .body(new InputStreamResource(resource.getInputStream()));
+                    .body(resource);
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> deleteMp3(@PathVariable Long id) {
+    @DeleteMapping("/delete")
+    public ResponseEntity<String> deleteAllMp3() {
         try {
-            mp3Service.deleteMp3ById(id);
+            mp3Service.deleteMp3();
             return ResponseEntity.ok().build();
-        }catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Error deleting mp3 file.");
         }
-
     }
 }
-
